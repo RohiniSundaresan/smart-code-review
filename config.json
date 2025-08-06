@@ -1,0 +1,27 @@
+{
+  "general": {
+    "excluded_directories": ["node_modules", "__pycache__", "venv", ".git", ".idea"],
+    "excluded_file_patterns": ["*.min.js", "*.map"]
+  },
+  "security": {
+    "enabled_checks": {
+      "sql_injection": true,
+      "xss": true,
+      "hardcoded_secrets": true,
+      "insecure_functions": true,
+      "os_command_injection": true
+    },
+    "severity_threshold": "medium"
+  },
+  "style": {
+    "enabled": true
+  },
+  "static": {
+    "unused_variables": true,
+    "unreachable_code": true
+  },
+  "ml": {
+    "enabled": true,
+    "model_path": "data/models/pattern_model.pkl"
+  }
+}

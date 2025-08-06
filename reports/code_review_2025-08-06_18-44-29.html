@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Code Review Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        h1 { color: #333; }
+        h2 { color: #444; margin-top: 30px; }
+        .summary { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
+        .file { margin-bottom: 30px; padding: 15px; background-color: #fff; border: 1px solid #ddd; border-radius: 5px; }
+        .file-path { font-weight: bold; margin-bottom: 10px; }
+        .finding { margin: 10px 0; padding: 10px; border-left: 4px solid #ccc; }
+        .high { border-color: #dc3545; }
+        .medium { border-color: #fd7e14; }
+        .low { border-color: #ffc107; }
+        .info { border-color: #0dcaf0; }
+        .code { font-family: monospace; background-color: #f7f7f7; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .severity-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; color: white; font-size: 0.8em; }
+        .high-tag { background-color: #dc3545; }
+        .medium-tag { background-color: #fd7e14; }
+        .low-tag { background-color: #ffc107; color: #333; }
+        .info-tag { background-color: #0dcaf0; }
+    </style>
+</head>
+<body>
+    <h1>Code Review Report</h1>
+    <div class="summary">
+        <h2>Summary</h2>
+        <p>Files analyzed: 1</p>
+        <p>Total issues found: 12</p>
+        <p>High severity issues: 0</p>
+        <p>Medium severity issues: 0</p>
+        <p>Low severity issues: 12</p>
+        <p>Info severity issues: 0</p>
+        <p>Report generated on: 2025-08-06 18:44:29</p>
+    </div>
+    <div class="file">
+        <div class="file-path">C:\BJB_POC\Impact_Analyzer\config.py</div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Function names should be lowercase with underscores</strong> (Line 84)</p>
+            <pre class="code">def Selectconfigtcs(story_id, keyword):</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Consider using constants (UPPERCASE) for string literals</strong> (Line 13)</p>
+            <pre class="code">azure_endpoint = "https://794895-textprocessing.openai.azure.com/"</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Consider using constants (UPPERCASE) for string literals</strong> (Line 14)</p>
+            <pre class="code">deployment_name = "Neuro-RiskBased-01"</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Consider using constants (UPPERCASE) for string literals</strong> (Line 15)</p>
+            <pre class="code">api_version = "2025-01-01-preview"</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Consider using constants (UPPERCASE) for string literals</strong> (Line 35)</p>
+            <pre class="code">query = """</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Consider using constants (UPPERCASE) for string literals</strong> (Line 48)</p>
+            <pre class="code">where_clause = "WHERE "</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Consider using constants (UPPERCASE) for string literals</strong> (Line 137)</p>
+            <pre class="code">query = """</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Consider using constants (UPPERCASE) for string literals</strong> (Line 175)</p>
+            <pre class="code">all_stories_query = """</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Consider using constants (UPPERCASE) for string literals</strong> (Line 239)</p>
+            <pre class="code">release_id = "R_06"</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Consider using constants (UPPERCASE) for string literals</strong> (Line 265)</p>
+            <pre class="code">release_id = "R_06"</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Better to use "if sequence:" instead of "if len(sequence):"</strong> (Line 253)</p>
+            <pre class="code">if len(config_tcs) > 0:</pre>
+        </div>
+        <div class="finding low">
+            <span class="severity-tag low-tag">LOW</span>
+            <p><strong>Unused variable: storycount</strong> (Line 267)</p>
+            <pre class="code">   storycount = len(user_stories)</pre>
+        </div>
+    </div>
+</body>
+</html>
