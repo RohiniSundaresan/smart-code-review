@@ -42,6 +42,48 @@ class CodeAnalyzer(AnalyzerBase):
         if self.ml_enabled:
             self._load_ml_model()
     
+    def get_language(self, file_path):
+        """Determine the programming language based on file extension.
+        
+        Args:
+            file_path (str): Path to the file being analyzed.
+            
+        Returns:
+            str: Language identifier or None if unsupported.
+        """
+        if not file_path:
+            return None
+            
+        # Handle case where file_path might be just a filename or "pasted_code"
+        if file_path in ['pasted_code', 'uploaded_file']:
+            # For pasted code, we'll assume Python for now
+            # In the future, this could be enhanced with language detection
+            return 'python'
+        
+        # Extract file extension
+        _, ext = os.path.splitext(file_path.lower())
+        
+        # Map extensions to languages
+        language_map = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.jsx': 'javascript',
+            '.ts': 'typescript',
+            '.tsx': 'typescript',
+            '.java': 'java',
+            '.cpp': 'cpp',
+            '.c': 'c',
+            '.cs': 'csharp',
+            '.php': 'php',
+            '.rb': 'ruby',
+            '.go': 'go',
+            '.rs': 'rust',
+            '.kt': 'kotlin',
+            '.swift': 'swift'
+        }
+        
+        return language_map.get(ext)
+    
     def analyze(self, file_path, file_content):
         """Analyze the file for various issues.
         
@@ -98,6 +140,11 @@ class CodeAnalyzer(AnalyzerBase):
                         'pattern': r'execute\([\'"`].*?\b(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b.*?[\'"]\s*\+',
                         'message': 'Potential SQL injection vulnerability with string concatenation',
                         'severity': 'high'
+                    },
+                    {
+                        'pattern': r'[\'"`].*?\b(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b.*?[\'"]\s*\+',
+                        'message': 'Potential SQL injection vulnerability - SQL query built with string concatenation',
+                        'severity': 'high'
                     }
                 ],
                 'os_command_injection': [
@@ -114,7 +161,7 @@ class CodeAnalyzer(AnalyzerBase):
                 ],
                 'hardcoded_secrets': [
                     {
-                        'pattern': r'(?i)(?:password|passwd|pwd|secret|key|token|api_?key)\s*=\s*[\'"`][^\'"]{8,}[\'"`]',
+                        'pattern': r'(?i)(?:password|passwd|pwd|secret|key|token|api_?key)\s*=\s*[\'"`][^\'"`]{8,}[\'"`]',
                         'message': 'Possible hardcoded credential or secret',
                         'severity': 'high'
                     }
@@ -135,7 +182,7 @@ class CodeAnalyzer(AnalyzerBase):
                 ],
                 'hardcoded_secrets': [
                     {
-                        'pattern': r'(?i)(?:password|passwd|pwd|secret|key|token|api_?key)\s*=\s*[\'"`][^\'"]{8,}[\'"`]',
+                        'pattern': r'(?i)(?:password|passwd|pwd|secret|key|token|api_?key)\s*=\s*[\'"`][^\'"`]{8,}[\'"`]',
                         'message': 'Possible hardcoded credential or secret',
                         'severity': 'high'
                     }
@@ -577,6 +624,16 @@ class CodeAnalyzer(AnalyzerBase):
         # Update model based on feedback
         # This is a simplified implementation
         try:
+            # Process feedback to improve model accuracy
+            if feedback and isinstance(feedback, dict):
+                # Example: adjust model weights based on feedback
+                feedback_type = feedback.get('type', 'unknown')
+                is_useful = feedback.get('useful', True)
+                
+                # Update model patterns (simplified)
+                if hasattr(self.ml_model, 'update'):
+                    self.ml_model.update(feedback_type, is_useful)
+            
             # Save updated model
             if self.ml_config.get('model_path'):
                 with open(self.ml_config.get('model_path'), 'wb') as f:

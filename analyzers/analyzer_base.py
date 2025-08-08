@@ -5,7 +5,8 @@
 import logging
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+# Configure logger for this module
+logging.getLogger(__name__)
 
 class AnalyzerBase:
     """Base class for all code analyzers."""

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Code Reviewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 50px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .btn-custom {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+            color: white;
+        }
+        .feature-card {
+            text-align: center;
+            padding: 30px 20px;
+            border-radius: 10px;
+            background: white;
+            margin: 10px;
+            transition: transform 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        .stats-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .nav-pills .nav-link {
+            color: #6c757d;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+        }
+        .nav-pills .nav-link.active {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+        }
+        .nav-pills .nav-link:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+        .nav-pills .nav-link.active:hover {
+            background: linear-gradient(45deg, #0056b3, #004085);
+            color: white;
+        }
+        #codeText {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            transition: border-color 0.3s ease;
+            resize: vertical;
+            min-height: 200px;
+        }
+        #codeText:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        }
+        .code-paste-info {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border: 1px solid #90caf9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <!-- Header -->
+                <div class="text-center text-white mb-5">
+                    <h1 class="display-4 fw-bold">
+                        <i class="fas fa-code"></i> Smart Code Reviewer
+                    </h1>
+                    <p class="lead">AI-powered code analysis with machine learning feedback</p>
+                </div>
+
+                <!-- Main Upload Card -->
+                <div class="card mb-4">
+                    <div class="card-body p-5">
+                        <h3 class="card-title text-center mb-4">
+                            <i class="fas fa-upload"></i> Upload Your Code
+                        </h3>
+                        
+                        {% with messages = get_flashed_messages() %}
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <!-- Upload Method Tabs -->
+                        <ul class="nav nav-pills nav-justified mb-4" id="uploadTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="file-tab" data-bs-toggle="pill" data-bs-target="#file-upload" type="button" role="tab">
+                                    <i class="fas fa-file-upload"></i> Upload File
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="paste-tab" data-bs-toggle="pill" data-bs-target="#code-paste" type="button" role="tab">
+                                    <i class="fas fa-clipboard"></i> Paste Code
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="uploadTabContent">
+                            <!-- File Upload Tab -->
+                            <div class="tab-pane fade show active" id="file-upload" role="tabpanel">
+                                <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                                    <div class="upload-area" id="uploadArea">
+                                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                        <h5>Drag & Drop your code file here</h5>
+                                        <p class="text-muted">or click to browse</p>
+                                        <input type="file" name="file" id="fileInput" class="d-none" accept=".py,.js,.ts,.jsx,.tsx,.java,.cpp,.c,.h,.hpp,.cs,.php,.rb,.go,.rs,.swift,.kt,.scala,.txt">
+                                        <button type="button" class="btn btn-custom" onclick="document.getElementById('fileInput').click()">
+                                            <i class="fas fa-file-code"></i> Choose File
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="mt-3" id="fileInfo" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-file"></i> Selected: <span id="fileName"></span>
+                                        </div>
+                                        <button type="submit" class="btn btn-custom btn-lg w-100">
+                                            <i class="fas fa-search"></i> Analyze Code
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Code Paste Tab -->
+                            <div class="tab-pane fade" id="code-paste" role="tabpanel">
+                                <form action="/analyze-text" method="post" id="pasteForm">
+                                    <div class="mb-3">
+                                        <label for="codeText" class="form-label">
+                                            <i class="fas fa-code"></i> Paste your code here:
+                                        </label>
+                                        <textarea class="form-control" id="codeText" name="code_text" rows="15" 
+                                                placeholder="// Paste your code here...
+// Example:
+function myFunction() {
+    console.log('Hello World');
+}" style="font-family: 'Courier New', monospace; font-size: 0.9rem;"></textarea>
+                                        <div class="form-text">
+                                            <i class="fas fa-info-circle"></i> 
+                                            Supports Python, JavaScript, TypeScript, Java, C++, and more
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="filename" class="form-label">Filename (optional)</label>
+                                            <input type="text" class="form-control" id="filename" name="filename" 
+                                                   placeholder="e.g., script.py, app.js" 
+                                                   pattern="[a-zA-Z0-9._-]+" title="Use only letters, numbers, dots, underscores, and hyphens">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="language" class="form-label">Language</label>
+                                            <select class="form-select" id="language" name="language">
+                                                <option value="auto">Auto-detect</option>
+                                                <option value="python">Python</option>
+                                                <option value="javascript">JavaScript</option>
+                                                <option value="typescript">TypeScript</option>
+                                                <option value="java">Java</option>
+                                                <option value="cpp">C++</option>
+                                                <option value="c">C</option>
+                                                <option value="csharp">C#</option>
+                                                <option value="php">PHP</option>
+                                                <option value="ruby">Ruby</option>
+                                                <option value="go">Go</option>
+                                                <option value="rust">Rust</option>
+                                                <option value="swift">Swift</option>
+                                                <option value="kotlin">Kotlin</option>
+                                                <option value="scala">Scala</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="codeInfo" style="display: none;">
+                                        <div class="alert alert-success">
+                                            <i class="fas fa-check"></i> Code ready for analysis 
+                                            (<span id="codeStats"></span>)
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-custom btn-lg w-100" id="analyzeBtn" disabled>
+                                        <i class="fas fa-search"></i> Analyze Code
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <a href="/demo" class="btn btn-outline-light btn-lg w-100">
+                            <i class="fas fa-play"></i> Try Demo
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-outline-light btn-lg w-100" onclick="showStats()">
+                            <i class="fas fa-chart-bar"></i> View Stats
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Features -->
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="feature-card">
+                            <div class="feature-icon text-danger">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <h5>Security Analysis</h5>
+                            <p class="text-muted">Detect hardcoded secrets, vulnerabilities, and security issues</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="feature-card">
+                            <div class="feature-icon text-primary">
+                                <i class="fas fa-magic"></i>
+                            </div>
+                            <h5>Style Checking</h5>
+                            <p class="text-muted">Ensure code follows best practices and style guidelines</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="feature-card">
+                            <div class="feature-icon text-success">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h5>ML Learning</h5>
+                            <p class="text-muted">System learns from your feedback to reduce false positives</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Modal -->
+                <div class="modal fade" id="statsModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-chart-bar"></i> ML Feedback Statistics
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body" id="statsContent">
+                                Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const uploadForm = document.getElementById('uploadForm');
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Highlight drop area when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            uploadArea.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            uploadArea.classList.remove('dragover');
+        }
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        }
+
+        function handleFiles(files) {
+            const file = files[0];
+            
+            // Create a new DataTransfer object for proper file assignment
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            
+            // Trigger change event to ensure all handlers are called
+            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            showFileInfo(file);
+        }
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (validateFile(file)) {
+                    showFileInfo(file);
+                } else {
+                    showError('Please select a valid code file (.py, .js, .ts, .java, .cpp, .c, .h, .cs, .php, .rb, .go, .rs, .swift, .kt, .scala, .txt)');
+                    fileInput.value = ''; // Clear the invalid selection
+                }
+            }
+        });
+
+        function validateFile(file) {
+            const allowedExtensions = ['py', 'js', 'ts', 'jsx', 'tsx', 'java', 'cpp', 'c', 'h', 'hpp', 'cs', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'scala', 'txt'];
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            
+            if (!allowedExtensions.includes(fileExtension)) {
+                return false;
+            }
+            
+            if (file.size > maxSize) {
+                showError('File size must be less than 5MB');
+                return false;
+            }
+            
+            return true;
+        }
+
+        function showFileInfo(file) {
+            fileName.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            fileInfo.style.display = 'block';
+            
+            // Clear any previous errors
+            clearErrors();
+        }
+
+        function showError(message) {
+            // Remove existing error alerts
+            clearErrors();
+            
+            const errorAlert = document.createElement('div');
+            errorAlert.className = 'alert alert-danger alert-dismissible fade show mt-3';
+            errorAlert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.getElementById('uploadForm').appendChild(errorAlert);
+        }
+
+        function clearErrors() {
+            const existingErrors = document.querySelectorAll('.alert-danger');
+            existingErrors.forEach(error => error.remove());
+        }
+
+        // Form submission handler
+        uploadForm.addEventListener('submit', function(e) {
+            if (!fileInput.files || fileInput.files.length === 0) {
+                e.preventDefault();
+                showError('Please select a file to upload');
+                return false;
+            }
+            
+            // Show loading state
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+                submitBtn.disabled = true;
+            }
+        });
+
+        // Show stats
+        function showStats() {
+            fetch('/stats')
+                .then(response => response.json())
+                .then(data => {
+                    const content = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Total Feedback</h6>
+                                <p class="h4 text-primary">${data.total_feedback}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Rule Weights</h6>
+                                <ul class="list-unstyled">
+                                    ${Object.entries(data.rule_weights).map(([rule, weight]) => 
+                                        `<li><strong>${rule}:</strong> ${weight.toFixed(2)}</li>`
+                                    ).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                        ${data.most_trusted ? `
+                            <div class="mt-3">
+                                <h6>Most Trusted: <span class="text-success">${data.most_trusted[0]} (${data.most_trusted[1].toFixed(2)})</span></h6>
+                                <h6>Least Trusted: <span class="text-warning">${data.least_trusted[0]} (${data.least_trusted[1].toFixed(2)})</span></h6>
+                            </div>
+                        ` : ''}
+                    `;
+                    document.getElementById('statsContent').innerHTML = content;
+                    new bootstrap.Modal(document.getElementById('statsModal')).show();
+                })
+                .catch(error => {
+                    document.getElementById('statsContent').innerHTML = '<div class="alert alert-danger">Error loading stats</div>';
+                    new bootstrap.Modal(document.getElementById('statsModal')).show();
+                });
+        }
+
+        // Code paste functionality
+        const codeText = document.getElementById('codeText');
+        const filenameInput = document.getElementById('filename');
+        const languageSelect = document.getElementById('language');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const codeInfo = document.getElementById('codeInfo');
+        const codeStats = document.getElementById('codeStats');
+        const pasteForm = document.getElementById('pasteForm');
+
+        // Monitor code textarea
+        codeText.addEventListener('input', updateCodeInfo);
+        filenameInput.addEventListener('input', updateCodeInfo);
+
+        function updateCodeInfo() {
+            const code = codeText.value.trim();
+            const filename = filenameInput.value.trim();
+            
+            if (code.length > 0) {
+                const lines = code.split('\n').length;
+                const chars = code.length;
+                const words = code.split(/\s+/).filter(word => word.length > 0).length;
+                
+                codeStats.textContent = `${lines} lines, ${chars} characters, ${words} words`;
+                codeInfo.style.display = 'block';
+                analyzeBtn.disabled = false;
+                
+                // Auto-detect language if filename provided
+                if (filename && languageSelect.value === 'auto') {
+                    autoDetectLanguage(filename);
+                }
+            } else {
+                codeInfo.style.display = 'none';
+                analyzeBtn.disabled = true;
+            }
+        }
+
+        function autoDetectLanguage(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const languageMap = {
+                'py': 'python',
+                'js': 'javascript',
+                'jsx': 'javascript',
+                'ts': 'typescript',
+                'tsx': 'typescript',
+                'java': 'java',
+                'cpp': 'cpp',
+                'cc': 'cpp',
+                'cxx': 'cpp',
+                'c': 'c',
+                'h': 'c',
+                'hpp': 'cpp',
+                'cs': 'csharp',
+                'php': 'php',
+                'rb': 'ruby',
+                'go': 'go',
+                'rs': 'rust',
+                'swift': 'swift',
+                'kt': 'kotlin',
+                'scala': 'scala'
+            };
+            
+            if (languageMap[ext]) {
+                languageSelect.value = languageMap[ext];
+            }
+        }
+
+        // Handle paste form submission
+        pasteForm.addEventListener('submit', function(e) {
+            const code = codeText.value.trim();
+            if (!code) {
+                e.preventDefault();
+                showError('Please paste some code to analyze');
+                return false;
+            }
+            
+            if (code.length > 100000) { // 100KB limit for pasted code
+                e.preventDefault();
+                showError('Code is too large. Please keep it under 100KB for optimal performance.');
+                return false;
+            }
+            
+            // Show loading state
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+            analyzeBtn.disabled = true;
+        });
+
+        // Auto-resize textarea
+        codeText.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 400) + 'px';
+        });
+
+        // Tab switching cleanup
+        document.getElementById('file-tab').addEventListener('shown.bs.tab', function() {
+            // Clear any paste form errors when switching to file upload
+            clearErrors();
+        });
+
+        document.getElementById('paste-tab').addEventListener('shown.bs.tab', function() {
+            // Clear any file upload errors when switching to paste
+            clearErrors();
+            // Focus on textarea
+            setTimeout(() => codeText.focus(), 100);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review Results - Smart Code Reviewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .finding-card {
+            border-left: 4px solid #ddd;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .finding-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .severity-high { border-left-color: #dc3545; }
+        .severity-medium { border-left-color: #ffc107; }
+        .severity-low { border-left-color: #28a745; }
+        
+        .type-security { background: linear-gradient(45deg, #dc3545, #c82333); }
+        .type-style { background: linear-gradient(45deg, #007bff, #0056b3); }
+        .type-static { background: linear-gradient(45deg, #28a745, #1e7e34); }
+        
+        .badge-type {
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .code-preview {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+        .feedback-buttons {
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .btn-feedback {
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin: 0 3px;
+        }
+        .confidence-bar {
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #e9ecef;
+            margin-top: 5px;
+        }
+        .confidence-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .summary-stats {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            color: white;
+            margin-bottom: 20px;
+        }
+        .file-content {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <!-- Header -->
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center text-white mb-4">
+                    <div>
+                        <h2><i class="fas fa-file-code"></i> {{ summary.filename }}</h2>
+                        <p class="mb-0">Analysis completed at {{ summary.analyzed_at }}</p>
+                    </div>
+                    <div>
+                        <a href="/" class="btn btn-outline-light">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="col-12">
+                <div class="summary-stats">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h4>{{ summary.adjusted_findings }}</h4>
+                            <small>Issues Found</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h4>{{ summary.lines_of_code }}</h4>
+                            <small>Lines of Code</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h4>{{ "%.1f"|format(summary.file_size/1024) }} KB</h4>
+                            <small>File Size</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h4>{{ ((summary.adjusted_findings / summary.total_findings * 100) if summary.total_findings > 0 else 0)|round }}%</h4>
+                            <small>Relevant Issues</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Summary & Recommendations -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-lightbulb"></i> Analysis Summary & Recommendations</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Overall Assessment -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="p-3 rounded" style="background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 100%); border-left: 4px solid #28a745;">
+                                    <h6 class="mb-2"><i class="fas fa-chart-line text-success"></i> Code Quality Score</h6>
+                                    {% set quality_score = ((summary.lines_of_code - summary.adjusted_findings) / summary.lines_of_code * 100) if summary.lines_of_code > 0 else 100 %}
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-grow-1">
+                                            <div class="progress" style="height: 12px;">
+                                                <div class="progress-bar bg-{{ 'success' if quality_score >= 80 else 'warning' if quality_score >= 60 else 'danger' }}" 
+                                                     style="width: {{ quality_score }}%"></div>
+                                            </div>
+                                        </div>
+                                        <span class="ms-2 fw-bold text-{{ 'success' if quality_score >= 80 else 'warning' if quality_score >= 60 else 'danger' }}">
+                                            {{ quality_score|round }}%
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">
+                                        {% if quality_score >= 90 %}Excellent code quality
+                                        {% elif quality_score >= 80 %}Good code quality
+                                        {% elif quality_score >= 60 %}Fair code quality - needs improvement
+                                        {% else %}Poor code quality - major improvements needed
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 rounded" style="background: linear-gradient(135deg, #fff3cd 0%, #f8f9fa 100%); border-left: 4px solid #ffc107;">
+                                    <h6 class="mb-2"><i class="fas fa-exclamation-triangle text-warning"></i> Priority Focus</h6>
+                                    {% set security_count = findings|selectattr("type", "equalto", "security")|list|length %}
+                                    {% set style_count = findings|selectattr("type", "equalto", "style")|list|length %}
+                                    {% set static_count = findings|selectattr("type", "equalto", "static")|list|length %}
+                                    {% if security_count > 0 %}
+                                        <div class="text-danger fw-bold"><i class="fas fa-shield-alt"></i> Security Issues ({{ security_count }})</div>
+                                        <small>Fix security vulnerabilities first</small>
+                                    {% elif static_count > 0 %}
+                                        <div class="text-info fw-bold"><i class="fas fa-code"></i> Static Analysis ({{ static_count }})</div>
+                                        <small>Address code structure issues</small>
+                                    {% elif style_count > 0 %}
+                                        <div class="text-primary fw-bold"><i class="fas fa-paint-brush"></i> Style Issues ({{ style_count }})</div>
+                                        <small>Improve code formatting and style</small>
+                                    {% else %}
+                                        <div class="text-success fw-bold"><i class="fas fa-check"></i> No Issues</div>
+                                        <small>Code looks great!</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Issue Breakdown -->
+                        {% if findings %}
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6><i class="fas fa-chart-pie"></i> Issue Breakdown</h6>
+                                <div class="row">
+                                    {% if security_count > 0 %}
+                                    <div class="col-md-4">
+                                        <div class="text-center p-3 border rounded bg-light">
+                                            <div class="text-danger display-6"><i class="fas fa-shield-alt"></i></div>
+                                            <h5 class="text-danger">{{ security_count }}</h5>
+                                            <small>Security Issues</small>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% if style_count > 0 %}
+                                    <div class="col-md-4">
+                                        <div class="text-center p-3 border rounded bg-light">
+                                            <div class="text-primary display-6"><i class="fas fa-paint-brush"></i></div>
+                                            <h5 class="text-primary">{{ style_count }}</h5>
+                                            <small>Style Issues</small>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% if static_count > 0 %}
+                                    <div class="col-md-4">
+                                        <div class="text-center p-3 border rounded bg-light">
+                                            <div class="text-success display-6"><i class="fas fa-code"></i></div>
+                                            <h5 class="text-success">{{ static_count }}</h5>
+                                            <small>Static Analysis</small>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Recommendations -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h6><i class="fas fa-tasks"></i> Recommended Actions</h6>
+                                <div class="list-group list-group-flush">
+                                    {% if security_count > 0 %}
+                                    <div class="list-group-item border-0 ps-0">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-danger me-3">1</span>
+                                            <div>
+                                                <strong>🔒 Address Security Vulnerabilities</strong>
+                                                <p class="mb-0 text-muted small">Fix hardcoded credentials, SQL injection risks, and other security issues immediately.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% if static_count > 0 %}
+                                    <div class="list-group-item border-0 ps-0">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-info me-3">{{ 2 if security_count > 0 else 1 }}</span>
+                                            <div>
+                                                <strong>🔧 Fix Code Structure Issues</strong>
+                                                <p class="mb-0 text-muted small">Remove unused variables, fix imports, and optimize code structure.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% if style_count > 0 %}
+                                    <div class="list-group-item border-0 ps-0">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-primary me-3">{{ (security_count > 0)|int + (static_count > 0)|int + 1 }}</span>
+                                            <div>
+                                                <strong>🎨 Improve Code Style</strong>
+                                                <p class="mb-0 text-muted small">Follow coding conventions, add documentation, and improve readability.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% if not findings %}
+                                    <div class="list-group-item border-0 ps-0">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-success me-3">✓</span>
+                                            <div>
+                                                <strong>🎉 Great Job!</strong>
+                                                <p class="mb-0 text-muted small">Your code looks clean and follows best practices. Consider adding more comments for better maintainability.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- General Recommendations -->
+                                    <div class="list-group-item border-0 ps-0">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-secondary me-3"><i class="fas fa-lightbulb"></i></span>
+                                            <div>
+                                                <strong>💡 Best Practices</strong>
+                                                <ul class="mb-0 text-muted small">
+                                                    <li>Add unit tests to ensure code reliability</li>
+                                                    <li>Use version control for tracking changes</li>
+                                                    <li>Add proper error handling and logging</li>
+                                                    <li>Document your functions and classes</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Findings -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-bug"></i> Code Issues Found</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if findings %}
+                            {% for finding in findings %}
+                            <div class="finding-card severity-{{ finding.severity }} card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="mb-2">
+                                                <span class="badge-type type-{{ finding.type }}">
+                                                    {% if finding.type == 'security' %}
+                                                        <i class="fas fa-shield-alt"></i> Security
+                                                    {% elif finding.type == 'style' %}
+                                                        <i class="fas fa-paint-brush"></i> Style
+                                                    {% elif finding.type == 'static' %}
+                                                        <i class="fas fa-code"></i> Static
+                                                    {% endif %}
+                                                </span>
+                                                <span class="badge bg-{{ 'danger' if finding.severity == 'high' else 'warning' if finding.severity == 'medium' else 'success' }}">
+                                                    {{ finding.severity|title }}
+                                                </span>
+                                                
+                                                <!-- Feedback Buttons -->
+                                                <div class="feedback-buttons">
+                                                    <button class="btn btn-sm btn-success btn-feedback" 
+                                                            onclick="recordFeedback('{{ finding.type }}', true, this)">
+                                                        <i class="fas fa-thumbs-up"></i> Helpful
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger btn-feedback" 
+                                                            onclick="recordFeedback('{{ finding.type }}', false, this)">
+                                                        <i class="fas fa-thumbs-down"></i> Not Helpful
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <h6 class="mb-2">{{ finding.message }}</h6>
+                                            
+                                            {% if finding.line %}
+                                            <p class="text-muted mb-2">
+                                                <i class="fas fa-map-marker-alt"></i> Line {{ finding.line }}
+                                                {% if finding.column %}, Column {{ finding.column }}{% endif %}
+                                            </p>
+                                            {% endif %}
+                                            
+                                            {% if finding.code %}
+                                            <div class="code-preview">{{ finding.code }}</div>
+                                            {% endif %}
+                                            
+                                            <!-- Confidence Bar -->
+                                            {% if finding.confidence %}
+                                            <div class="mt-2">
+                                                <small class="text-muted">ML Confidence: {{ "%.0f"|format(finding.confidence * 100) }}%</small>
+                                                <div class="confidence-bar">
+                                                    <div class="confidence-fill bg-{{ 'success' if finding.confidence > 0.7 else 'warning' if finding.confidence > 0.4 else 'danger' }}" 
+                                                         style="width: {{ finding.confidence * 100 }}%"></div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle"></i> Great! No issues found in your code.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Preview -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-file-alt"></i> File Preview</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="file-content">
+                            <pre><code class="language-python">{{ file_content }}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5><i class="fas fa-tools"></i> Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if not is_demo %}
+                        <div class="dropdown mb-2">
+                            <button class="btn btn-primary dropdown-toggle w-100" type="button" id="downloadDropdown" data-bs-toggle="dropdown">
+                                <i class="fas fa-download"></i> Download Report
+                            </button>
+                            <ul class="dropdown-menu w-100">
+                                <li><a class="dropdown-item" href="#" onclick="downloadReport('json')">
+                                    <i class="fas fa-code"></i> JSON Format
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="downloadReport('html')">
+                                    <i class="fas fa-file-alt"></i> HTML Report
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="downloadReport('csv')">
+                                    <i class="fas fa-table"></i> CSV Export
+                                </a></li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                        <button class="btn btn-info w-100 mb-2" onclick="showMLStats()">
+                            <i class="fas fa-chart-bar"></i> ML Statistics
+                        </button>
+                        <a href="/" class="btn btn-secondary w-100">
+                            <i class="fas fa-upload"></i> Analyze Another File
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ML Stats Modal -->
+    <div class="modal fade" id="mlStatsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-brain"></i> Machine Learning Statistics
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="mlStatsContent">
+                    Loading...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    <script>
+        // Record feedback for ML learning
+        function recordFeedback(findingType, useful, buttonElement) {
+            fetch('/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    finding_type: findingType,
+                    useful: useful
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Visual feedback
+                    const feedbackButtons = buttonElement.parentElement;
+                    feedbackButtons.innerHTML = `
+                        <span class="badge bg-success">
+                            <i class="fas fa-check"></i> Feedback recorded
+                        </span>
+                    `;
+                    
+                    // Show toast notification
+                    showToast('Feedback recorded successfully!', 'success');
+                }
+            })
+            .catch(error => {
+                showToast('Error recording feedback', 'error');
+            });
+        }
+
+        // Show ML statistics
+        function showMLStats() {
+            fetch('/stats')
+                .then(response => response.json())
+                .then(data => {
+                    const content = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Total Feedback Given</h6>
+                                <p class="h4 text-primary">${data.total_feedback}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Learning Progress</h6>
+                                <p class="h4 text-success">${data.total_feedback > 0 ? 'Active' : 'Starting'}</p>
+                            </div>
+                        </div>
+                        
+                        <h6 class="mt-3">Rule Confidence Weights</h6>
+                        ${Object.entries(data.rule_weights).map(([rule, weight]) => `
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-capitalize">${rule}</span>
+                                    <span>${(weight * 100).toFixed(0)}%</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-${weight > 0.7 ? 'success' : weight > 0.4 ? 'warning' : 'danger'}" 
+                                         style="width: ${weight * 100}%"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                        
+                        ${data.most_trusted ? `
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <h6>Learning Insights</h6>
+                                <p class="mb-1"><strong>Most Trusted:</strong> 
+                                   <span class="text-success">${data.most_trusted[0]} (${(data.most_trusted[1] * 100).toFixed(0)}%)</span></p>
+                                <p class="mb-0"><strong>Least Trusted:</strong> 
+                                   <span class="text-warning">${data.least_trusted[0]} (${(data.least_trusted[1] * 100).toFixed(0)}%)</span></p>
+                            </div>
+                        ` : `
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <p class="mb-0"><i class="fas fa-info-circle"></i> 
+                                   Start giving feedback to see learning insights!</p>
+                            </div>
+                        `}
+                    `;
+                    document.getElementById('mlStatsContent').innerHTML = content;
+                    new bootstrap.Modal(document.getElementById('mlStatsModal')).show();
+                })
+                .catch(error => {
+                    document.getElementById('mlStatsContent').innerHTML = 
+                        '<div class="alert alert-danger">Error loading ML statistics</div>';
+                    new bootstrap.Modal(document.getElementById('mlStatsModal')).show();
+                });
+        }
+
+        // Download report function
+        function downloadReport(format) {
+            // Create download link
+            const downloadUrl = '/download/' + format;
+            
+            // Create temporary link and trigger download
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Show notification
+            showToast(format.toUpperCase() + ' report download started!', 'success');
+        }
+
+        // Toast notification function
+        function showToast(message, type) {
+            const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            toastContainer.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // Remove toast after it's hidden
+            toast.addEventListener('hidden.bs.toast', () => {
+                toast.remove();
+            });
+        }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            document.body.appendChild(container);
+            return container;
+        }
+    </script>
+</body>
+</html>
