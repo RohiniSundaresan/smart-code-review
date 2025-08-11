@@ -159,17 +159,25 @@
                                         <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
                                         <h5>Drag & Drop your code file here</h5>
                                         <p class="text-muted">or click to browse</p>
-                                        <input type="file" name="file" id="fileInput" class="d-none" accept=".py,.js,.ts,.jsx,.tsx,.java,.cpp,.c,.h,.hpp,.cs,.php,.rb,.go,.rs,.swift,.kt,.scala,.txt">
-                                        <button type="button" class="btn btn-custom" onclick="document.getElementById('fileInput').click()">
+                                        <input type="file" name="file" id="fileInput" style="position: absolute; opacity: 0; width: 0; height: 0;" accept=".py,.js,.ts,.jsx,.tsx,.java,.cpp,.c,.h,.hpp,.cs,.php,.rb,.go,.rs,.swift,.kt,.scala,.txt">
+                                        <button type="button" class="btn btn-custom" id="chooseFileBtn">
                                             <i class="fas fa-file-code"></i> Choose File
                                         </button>
+                                    </div>
+                                    <div id="fileInfo" class="mt-3" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-file"></i> Selected file: <span id="fileName"></span>
+                                            <button type="submit" class="btn btn-success btn-sm float-end">
+                                                <i class="fas fa-upload"></i> Upload and Analyze
+                                            </button>
+                                        </div>
                                     </div>
                                     
                                     <div class="mt-3" id="fileInfo" style="display: none;">
                                         <div class="alert alert-info">
                                             <i class="fas fa-file"></i> Selected: <span id="fileName"></span>
                                         </div>
-                                        <button type="submit" class="btn btn-custom btn-lg w-100">
+                                        <button type="submit" class="btn btn-custom btn-lg w-100" id="analyzeFileBtn">
                                             <i class="fas fa-search"></i> Analyze Code
                                         </button>
                                     </div>
@@ -307,12 +315,90 @@ function myFunction() {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // File upload handling
+        // Simple file upload handling
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const fileInfo = document.getElementById('fileInfo');
         const fileName = document.getElementById('fileName');
         const uploadForm = document.getElementById('uploadForm');
+        const chooseFileBtn = document.getElementById('chooseFileBtn');
+
+        // Simple click handler for the choose file button
+        chooseFileBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            fileInput.click();
+        });
+
+        // File selection handler
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (validateFile(file)) {
+                    fileName.textContent = file.name;
+                    fileInfo.style.display = 'block';
+                } else {
+                    showError('Please select a valid code file');
+                    fileInput.value = '';
+                }
+            }
+        });
+
+        // Form submission handler
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const file = fileInput.files[0];
+            if (!file) {
+                showError('Please select a file first');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const submitBtn = fileInfo.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+            })
+            .catch(error => {
+                showError(error.message || 'Upload failed. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload and Analyze';
+            });
+        });
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                fileName.textContent = files[0].name;
+                fileInfo.style.display = 'block';
+            }
+        });
 
         // Prevent default drag behaviors
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -357,35 +443,181 @@ function myFunction() {
         function handleFiles(files) {
             const file = files[0];
             
-            // Create a new DataTransfer object for proper file assignment
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            fileInput.files = dt.files;
+            if (!validateFile(file)) {
+                showError('Please select a valid code file with appropriate size (max 5MB)');
+                return;
+            }
             
-            // Trigger change event to ensure all handlers are called
-            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            showFileInfo(file);
+            try {
+                // Create a new DataTransfer object for proper file assignment
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+                
+                // Trigger change event to ensure all handlers are called
+                const event = new Event('change', { bubbles: true });
+                fileInput.dispatchEvent(event);
+                
+                showFileInfo(file);
+            } catch (error) {
+                console.error('File handling error:', error);
+                showError('There was an error processing the file. Please try again.');
+            }
         }
 
-        // Click to upload
-        uploadArea.addEventListener('click', () => {
-            fileInput.click();
+        // Enhanced file selection handling with debouncing
+        fileInput.addEventListener('change', (e) => {
+            e.stopPropagation();
+            
+            if (!e.target.files || !e.target.files.length) {
+                console.log('No file selected');
+                return;
+            }
+
+            const file = e.target.files[0];
+            console.log('File selected:', file.name);
+            
+            // Reset the file dialog state
+            isFileDialogOpen = false;
+            
+            // Implement a more stable file handling
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const fileContent = event.target.result;
+                
+                // Create a new File object
+                const secureFile = new File([fileContent], file.name, {
+                    type: file.type,
+                    lastModified: file.lastModified
+                });
+
+                // Create a new DataTransfer
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(secureFile);
+                
+                // Update the file input
+                fileInput.files = dataTransfer.files;
+                
+                if (validateFile(secureFile)) {
+                    console.log('File validated successfully'); // Debug log
+                    showFileInfo(secureFile);
+                    
+                    // Show immediate visual feedback
+                    const fileDisplay = document.createElement('div');
+                    fileDisplay.className = 'alert alert-success mt-2';
+                    fileDisplay.innerHTML = `
+                        <i class="fas fa-check-circle"></i> 
+                        File "${secureFile.name}" ready for upload
+                    `;
+                    
+                    // Remove any existing file displays
+                    const existingDisplays = uploadArea.querySelectorAll('.alert');
+                    existingDisplays.forEach(display => display.remove());
+                    
+                    uploadArea.appendChild(fileDisplay);
+                } else {
+                    console.log('File validation failed'); // Debug log
+                    showError('Please select a valid code file (.py, .js, .ts, .java, .cpp, .c, .h, .cs, .php, .rb, .go, .rs, .swift, .kt, .scala, .txt)');
+                    fileInput.value = '';
+                }
+            };
+
+            reader.onerror = function() {
+                console.error('FileReader error:', reader.error);
+                showError('Error reading the file. Please try again.');
+                fileInput.value = '';
+            };
+
+            // Start reading the file
+            reader.readAsArrayBuffer(file);
         });
 
-        // File selection
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                const file = e.target.files[0];
-                if (validateFile(file)) {
-                    showFileInfo(file);
-                } else {
-                    showError('Please select a valid code file (.py, .js, .ts, .java, .cpp, .c, .h, .cs, .php, .rb, .go, .rs, .swift, .kt, .scala, .txt)');
-                    fileInput.value = ''; // Clear the invalid selection
+        // Enhanced form submission with reliable upload handling
+        uploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log('Form submission started'); // Debug log
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showError('Please select a file to analyze');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            console.log('Submitting file:', file.name); // Debug log
+            
+            if (!validateFile(file)) {
+                return;
+            }
+            
+            // Disable the file input during upload
+            fileInput.disabled = true;
+            
+            try {
+                // Create a new FormData object directly from the file
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const submitButton = uploadForm.querySelector('button[type="submit"]');
+                const uploadProgress = document.createElement('div');
+                uploadProgress.className = 'progress mt-3';
+                uploadProgress.innerHTML = `
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                `;
+                submitButton.parentNode.insertBefore(uploadProgress, submitButton);
+                
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                
+                // Create and track upload progress
+                const progressBar = uploadProgress.querySelector('.progress-bar');
+                let lastProgress = 0;
+                
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const progress = Math.round((event.loaded / event.total) * 100);
+                        if (progress > lastProgress) { // Only update if progress increases
+                            progressBar.style.width = progress + '%';
+                            progressBar.textContent = progress + '%';
+                            lastProgress = progress;
+                            console.log('Upload progress:', progress + '%'); // Debug log
+                        }
+                    }
+                });
+                
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Upload failed: ${response.statusText}`);
                 }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    window.location.href = result.redirect || '/results';
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                showError('There was an error uploading the file. Please try again.');
+            } finally {
+                const submitButton = uploadForm.querySelector('button[type="submit"]');
+                const uploadProgress = uploadForm.querySelector('.progress');
+                if (uploadProgress) {
+                    uploadProgress.remove();
+                }
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="fas fa-search"></i> Analyze Code';
             }
         });
 
+        // Helper functions
         function validateFile(file) {
             const allowedExtensions = ['py', 'js', 'ts', 'jsx', 'tsx', 'java', 'cpp', 'c', 'h', 'hpp', 'cs', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'scala', 'txt'];
             const fileExtension = file.name.split('.').pop().toLowerCase();

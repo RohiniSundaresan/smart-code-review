@@ -63,6 +63,8 @@ def index():
     """Main page with upload form."""
     return render_template('index.html')
 
+
+
 def generate_enhanced_summary(filename, file_content, findings, adjusted_findings):
     """Generate enhanced summary with recommendations and insights."""
     
@@ -137,26 +139,37 @@ def generate_enhanced_summary(filename, file_content, findings, adjusted_finding
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    """Handle file upload and analysis."""
+    """Handle file upload with improved error handling and response."""
     if 'file' not in request.files:
-        flash('No file selected')
-        return redirect(request.url)
+        return jsonify({
+            'success': False,
+            'error': 'No file selected'
+        }), 400
     
     file = request.files['file']
     if file.filename == '':
-        flash('No file selected')
-        return redirect(request.url)
+        return jsonify({
+            'success': False,
+            'error': 'No file selected'
+        }), 400
     
-    if file and allowed_file(file.filename):
+    if not allowed_file(file.filename):
+        return jsonify({
+            'success': False,
+            'error': f'Invalid file type. Supported: {", ".join(ALLOWED_EXTENSIONS)}'
+        }), 400
+        
+    try:
+        # Secure the filename
         filename = secure_filename(file.filename)
         
         # Read file content
-        try:
-            file_content = file.read().decode('utf-8')
-        except UnicodeDecodeError:
-            flash('File must be a text file with UTF-8 encoding')
-            return redirect(url_for('index'))
+        file_content = file.read().decode('utf-8')
         
+        # Initialize components if needed
+        if analyzer is None:
+            init_components()
+            
         # Analyze the code
         findings = analyzer.analyze(filename, file_content)
         
@@ -174,13 +187,36 @@ def upload_file():
             'file_content': file_content
         }
         
-        return render_template('results.html', 
-                             findings=adjusted_findings, 
-                             summary=summary,
-                             file_content=file_content)
-    
-    flash('Invalid file type. Supported: ' + ', '.join(ALLOWED_EXTENSIONS))
-    return redirect(url_for('index'))
+        return jsonify({
+            'success': True,
+            'redirect': url_for('results')
+        })
+        
+    except UnicodeDecodeError:
+        return jsonify({
+            'success': False,
+            'error': 'File must be a text file with UTF-8 encoding'
+        }), 400
+    except Exception as e:
+        print(f"Upload error: {str(e)}")  # Log the error
+        return jsonify({
+            'success': False,
+            'error': 'An error occurred while processing the file'
+        }), 500
+
+@app.route('/results')
+def results():
+    """Display analysis results."""
+    from flask import session
+    analysis = session.get('last_analysis')
+    if not analysis:
+        flash('No analysis results found')
+        return redirect(url_for('index'))
+        
+    return render_template('results.html',
+                         findings=analysis['findings'],
+                         summary=analysis['summary'],
+                         file_content=analysis['file_content'])
 
 @app.route('/analyze-text', methods=['POST'])
 def analyze_text():
