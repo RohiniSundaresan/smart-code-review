@@ -1,25 +1,32 @@
 # Smart Code Review
 
-An AI-powered local code review tool designed to identify security vulnerabilities, style issues, and code quality problems in your codebase. 
+An AI-powered code review tool with web interface designed to identify security vulnerabilities, style issues, and code quality problems in your codebase.
+
+> Created by **ScriptSquad** (QEA Tech COE Team) for Cognizant's VIBE Coding Event 2025
 
 ## Overview
 
-Smart Code Review is a standalone tool that analyzes your code locally for:
+Smart Code Review is a powerful tool that analyzes your code for:
 
 - **Security vulnerabilities** - SQL injection, XSS, hardcoded secrets, command injection
 - **Style issues** - Enforces coding standards and best practices
 - **Static analysis** - Identifies unused variables, unreachable code, and other issues
 - **ML-based pattern detection** - Learns from your code to detect recurring patterns
+- **Interactive Web Interface** - Easy-to-use web UI for code analysis and review
 
-The tool supports multiple programming languages with specialized rules for Python and JavaScript.
+The tool supports multiple programming languages with specialized rules for Python and JavaScript, providing both command-line and web-based interfaces for maximum flexibility.
 
 ## Features
 
+- **Web Interface** - Modern, intuitive web UI for code analysis and review
 - **Local execution** - All analysis happens on your machine, no code sent to external servers
 - **Multiple language support** - Primary support for Python and JavaScript, with extensibility for others
 - **Customizable configuration** - Adjust rules, thresholds, and checks via config file
-- **Multiple output formats** - Generate reports in HTML, Markdown, or JSON
-- **Machine learning capability** - Improves detection over time
+- **Multiple output formats** - Generate reports in HTML, JSON, and CSV
+- **Machine learning capability** - Improves detection over time through feedback
+- **Interactive Results** - View and interact with analysis results in real-time
+- **Drag & Drop Support** - Easy file upload through drag & drop or file picker
+- **Real-time Analysis** - Instant feedback on code quality and security issues
 
 ## Installation
 
@@ -34,7 +41,25 @@ cd smart-code-review
 pip install -r requirements.txt
 ```
 
-## Usage Examples
+## Usage
+
+### Web Interface
+
+```bash
+# Start the web server
+python app.py
+
+# Access the web interface at http://localhost:5000
+```
+
+The web interface provides:
+- Drag & drop file upload
+- Real-time code analysis
+- Interactive results viewing
+- ML-based feedback system
+- Multiple report format downloads (HTML, JSON, CSV)
+
+### Command Line Interface
 
 ```bash
 # Analyze a single file
@@ -89,6 +114,32 @@ Smart Code Review can be configured via a JSON configuration file. Here's a samp
 
 ## Supported Analysis Types
 
+## Web Interface Features
+
+### Code Upload
+- Drag & drop file upload support
+- File picker for traditional upload
+- Multiple programming language support
+- Instant file validation
+- Progress tracking during upload
+
+### Analysis Features
+- Real-time code analysis
+- Interactive results viewing
+- Syntax highlighting
+- Line-by-line code review
+- Issue categorization by type and severity
+- ML-powered pattern detection
+- User feedback system for improved accuracy
+
+### Report Generation
+- Multiple export formats (HTML, JSON, CSV)
+- Detailed analysis summaries
+- Issue prioritization
+- Code quality metrics
+- Security vulnerability assessment
+- Style recommendations
+
 ### Security Analysis
 
 Detects various security vulnerabilities including:
@@ -124,6 +175,17 @@ Learns patterns from your code to detect:
 - Recurring issues
 - Custom patterns specific to your codebase
 - Unusual code constructs
+
+## Attribution
+
+This project was developed by **ScriptSquad** from QEA Tech COE Team at Cognizant for the VIBE Coding Event 2025. 
+
+**Team ScriptSquad:**
+- Quality Engineering & Assurance (QEA) Tech Center of Excellence
+- Cognizant Technology Solutions
+- VIBE Coding Event 2025
+
+The tool showcases innovative approaches to code quality analysis and demonstrates the integration of AI/ML capabilities in quality assurance processes.
 
 ## Project Structure
 
